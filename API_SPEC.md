@@ -1,4 +1,4 @@
-# 분실·습득물 시스템 API 명세서 v1.2
+# 분실·습득물 시스템 API 명세서 v1.3
 
 Nov 22, 2026 · @하은
 
@@ -8,6 +8,7 @@ Nov 22, 2026 · @하은
 
 | 버전 | 날짜 | 내용 |
 | --- | --- | --- |
+| v1.3 | 2026-11-23 | FR-07 장소 추천을 캠퍼스 보행 그래프(도보 시간) 기반으로 변경. 전달 응답 `building`에 `myWalkSeconds`·`otherWalkSeconds`·`method` 추가, `demoSelectable`·시연 모드 기준을 출입구 노드로 변경, "장소 추천 계산" 절과 관리자 보행 그래프 API 3개 추가. ERD는 `docs/ERD.md`, 데이터 양식은 `docs/DATA_GUIDE.md` |
 | v1.2 | 2026-11-23 | 백엔드 검토 반영. ready 재요청 규칙 확정(연장 없음), 습득물 소프트 삭제, `LOST_ITEM_HAS_CLAIM` 코드와 종료된 신고의 close 처리, 신청 생성·습득물 수정·삭제의 행 잠금 규칙, `activeHandoverId` 선택 규칙 |
 | v1.1 | 2026-11-22 | 프론트 보완 요청 반영. 날짜에 `+09:00` 표기, ID·null 규칙, 인증·세션·CSRF 규칙, `SESSION_EXPIRED`·`HANDOVER_ALREADY_READY` 코드, `/api/auth/me`에 department, 건물 `demoSelectable`, 습득물 `claimEligibility`, 매칭 `reasons`와 최종 정렬, 전달 조회 응답 재정의(`serverNow` 등), 전달 예외 상황표, 관리자 A1\~A4 응답·신청 묶음 조회·전달 상세·동시성 규칙, vite proxy 안내 수정. 보고서: [API 명세서 v1.1 검토 보고서](https://claude.ai/artifact/QuasLA876tjzcnRVmDnVbE) |
 | v1 | 2026-11-22 | 최초 작성 |
@@ -175,7 +176,7 @@ Nov 22, 2026 · @하은
   { "buildingId": 17, "name": "기타", "demoSelectable": false } ] }
 ```
 
-`demoSelectable`은 좌표가 등록된 건물이다. 시연 모드의 현재 위치 선택과 전달 장소 추천에는 이 건물만 쓴다. 좌표 값은 보내지 않는다. 건물 이름은 프론트 목록(이학관\~자악관 16개 + 기타)을 샘플 데이터에 그대로 쓴다.
+`demoSelectable`은 장소 추천 후보가 될 수 있는 건물이다. 보행 그래프 모드에서는 출입구(ENTRANCE) 노드가 1개 이상 있는 건물, 직선거리 대체 모드에서는 좌표가 등록된 건물이다. 시연 모드의 현재 위치 선택과 전달 장소 추천에는 이 건물만 쓴다. 좌표 값은 보내지 않는다. 건물 이름은 프론트 목록(이학관\~자악관 16개 + 기타)을 샘플 데이터에 그대로 쓴다.
 
 ## 습득물
 
@@ -386,7 +387,7 @@ Nov 22, 2026 · @하은
 - `myRole`은 `FINDER`(습득자) 또는 `OWNER`(분실자). "받았어요" 버튼은 OWNER에게만 보인다.
 - `finderReady`, `ownerReady`는 서버가 `readyUntil > serverNow`로 계산한 값이다. 남은 시간은 프론트가 `readyUntil`과 `serverNow`의 차이로 계산해 휴대폰 시계 오차를 피한다.
 - `readyUntil`은 만료된 뒤에도 값이 남을 수 있다 (상태는 ready 플래그로 판단).
-- `PLACE_SET`이면 `"building": { "buildingId": 8, "name": "인곡관(제1학사관)" }`, `placeSetAt`에 시각. `DONE`이면 `completedAt`, `claimStatus: "COMPLETED"`, `item.status: "CLAIMED"`.
+- `PLACE_SET`이면 `"building": { "buildingId": 8, "name": "인곡관(제1학사관)", "myWalkSeconds": 240, "otherWalkSeconds": 310, "method": "WALK_GRAPH" }`, `placeSetAt`에 시각. 도보 시간과 `method`는 아래 "장소 추천 계산" 절 참고. `DONE`이면 `completedAt`, `claimStatus: "COMPLETED"`, `item.status: "CLAIMED"`.
 - 좌표와 상대의 이름·연락처는 보내지 않는다. 추천 건물에서 서로를 찾는 것은 두 사람이 알아서 한다 (11/22 결정).
 - ready, reset, receive의 성공 응답도 이 조회 응답과 같은 모양이다. 프론트는 응답으로 화면을 바로 갱신한다.
 - `GET /api/me/handovers` 응답은 같은 모양의 배열이다 (DONE 제외).
@@ -397,11 +398,29 @@ Nov 22, 2026 · @하은
 { "lat": 36.6905, "lng": 126.5841 }
 ```
 
-시연 모드에서는 GPS 대신 현재 건물을 고른다: `{ "buildingId": 7 }`. 서버는 그 건물 좌표를 현재 위치로 쓴다. 둘 다 없으면 `LOCATION_REQUIRED`. 예시 좌표는 형식 설명용이다.
+시연 모드에서는 GPS 대신 현재 건물을 고른다: `{ "buildingId": 7 }`. 서버는 그 건물의 출입구 노드(여러 개면 node\_id가 가장 작은 것)를 현재 위치로 쓴다. 직선거리 대체 모드에서는 건물 좌표를 쓴다. 둘 다 없으면 `LOCATION_REQUIRED`. 예시 좌표는 형식 설명용이다.
 
 응답은 상태 조회와 같은 모양이다. 두 번째 사람이 누른 경우 서버가 건물을 계산해 `status: "PLACE_SET"`과 `building`을 바로 돌려주고, 임시 좌표는 지운다.
 
 **받았어요:** 응답은 조회 응답과 같은 모양이며 `status: "DONE"`이다. 같은 트랜잭션에서 수령 신청 COMPLETED, 습득물 CLAIMED로 바꾸고 습득자에게 HANDOVER\_DONE 알림을 만든다. 예외는 `HANDOVER_NOT_PARTY`, `HANDOVER_DONE`, `FORBIDDEN`(습득자가 호출).
+
+**장소 추천 계산 (FR-07, 11/23 C안)**
+
+기획안 6장의 원칙(두 사람 중 더 오래 가는 쪽이 가장 덜 가는 건물)을 그대로 쓰되, 직선거리 대신 캠퍼스 길을 따라 걷는 시간(언덕·계단 반영, 오르막과 내리막을 따로 계산)으로 비교한다. 테이블과 계산식은 `docs/ERD.md`의 "보행 그래프와 장소 추천" 절.
+
+1. 두 번째 ready가 들어오면 HANDOVER 행을 잠근 상태에서 두 사람의 위치를 각각 가장 가까운 보행 노드에 맞춘다. 맞추는 데 걸리는 시간은 직선거리 ÷ 1.25m/s로 더한다. 시연 모드는 고른 건물의 출입구 노드를 쓰고 더하는 시간은 0이다.
+2. `WALK_TIME`(미리 계산한 노드→건물 최단 도보 시간)을 두 노드로 한 번 조회한다.
+3. 건물마다 A시간·B시간을 구해 `max(A, B)`가 가장 작은 건물을 고른다. 같으면 `A + B`가 작은 건물, 그래도 같으면 buildingId가 작은 건물.
+4. 각자의 시간을 HANDOVER의 finder·owner\_walk\_seconds에 저장하고, 임시 좌표를 지운다.
+
+| 응답 필드 (`building` 안) | 뜻 |
+| --- | --- |
+| `myWalkSeconds` | 요청한 사람의 예상 도보 시간(초). 화면은 분으로 올림해 "도보 약 4분" |
+| `otherWalkSeconds` | 상대의 예상 도보 시간(초). 공평하게 골랐음을 보여주는 용도 |
+| `method` | `WALK_GRAPH` 보행 그래프로 계산, `STRAIGHT_LINE` 직선거리 대체 계산. `STRAIGHT_LINE`이면 두 도보 시간은 null |
+
+- 대체 계산: WALK\_TIME이 비어 있거나(그래프 데이터 미입력) 두 사람 모두 닿을 수 있는 건물이 없으면 기획안의 `ST_Distance_Sphere` SQL로 계산한다. 시연이 멈추지 않게 하기 위한 안전장치다.
+- 관리자 A4 응답의 `building`은 `{ buildingId, name }`만 보낸다.
 
 **상태별 허용 동작**
 
@@ -412,7 +431,7 @@ Nov 22, 2026 · @하은
 | DONE | `HANDOVER_DONE` | `HANDOVER_DONE` | `HANDOVER_DONE` |
 
 - 30분이 지나 이동 가능이 풀리면 그 사람의 임시 좌표도 다음 조회 때 지운다.
-- 시연 모드의 `buildingId`는 설정값(`app.demo-mode: true`)일 때만 받는다. "기타"처럼 좌표 없는 건물을 보내면 `LOCATION_REQUIRED`.
+- 시연 모드의 `buildingId`는 설정값(`app.demo-mode: true`)일 때만 받는다. `demoSelectable`이 false인 건물("기타" 등)을 보내면 `LOCATION_REQUIRED`. 시연 모드가 꺼져 있는데 `buildingId`만 보내도 `LOCATION_REQUIRED`. 좌표와 `buildingId`를 함께 보내면 좌표를 쓴다.
 - 두 사람이 거의 동시에 ready를 눌러도 건물 계산은 한 번만 한다 (전달 행 잠금).
 
 **예외 상황별 처리**
@@ -489,6 +508,26 @@ Nov 22, 2026 · @하은
 | POST | /api/admin/claims/{id}/reject | 거절 | A3 |
 | GET | /api/admin/handovers?status=&from=&to= | 전달 목록과 집계 (보기 전용) | A4 |
 | GET | /api/admin/handovers/{id} | 전달 상세 | A4 |
+| GET | /api/admin/path-graph | 보행 그래프 상태: 노드·간선·건물 수, 계산 시각, 닿을 수 없는 노드·건물 목록 | 운영용 |
+| POST | /api/admin/path-graph/rebuild | `data/` 폴더의 CSV 3개를 다시 읽어 그래프를 교체하고 WALK\_TIME을 다시 계산 | 운영용 |
+| GET | /api/admin/path-graph/route?fromNode=&toBuilding= | 노드→건물의 계산된 시간과 지나는 노드 목록. 실측 보정용 | 운영용 |
+
+**보행 그래프 관리 (운영용, 화면 없음)**
+
+서버가 시작할 때 PATH\_NODE가 비어 있으면 `data/buildings.csv`, `data/path_nodes.csv`, `data/path_edges.csv`를 읽어 넣고 WALK\_TIME을 계산한다. 이미 있으면 WALK\_TIME만 다시 계산한다. CSV를 고친 뒤에는 `rebuild`를 호출한다.
+
+`GET /api/admin/path-graph` 응답:
+
+```json
+{ "success": true, "data": {
+  "nodeCount": 52, "edgeCount": 74, "candidateBuildingCount": 16,
+  "computedAt": "2026-11-28T10:00:00+09:00",
+  "unreachableNodes": ["J-31"], "buildingsWithoutEntrance": ["기타"] } }
+```
+
+`rebuild`는 같은 모양으로 응답한다. CSV에 오류가 있으면(없는 node\_code 참조, 중복 코드, 좌표 형식 오류) 400 `VALIDATION_FAILED`이고 `message`에 파일명과 행 번호를 넣으며, 기존 그래프는 그대로 둔다. 진행 중인 전달의 추천 결과는 바뀌지 않는다.
+
+`GET /api/admin/path-graph/route?fromNode=E-DORM1-1&toBuilding=INMUN` 응답: `{ "seconds": 312, "nodes": ["E-DORM1-1", "J-04", "J-07", "E-INMUN-1"] }`. 코드가 없으면 404.
 
 **A1 상태별 건수**
 
