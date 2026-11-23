@@ -1,4 +1,4 @@
-# 분실·습득물 시스템 API 명세서 v1.1
+# 분실·습득물 시스템 API 명세서 v1.2
 
 Nov 22, 2026 · @하은
 
@@ -8,6 +8,7 @@ Nov 22, 2026 · @하은
 
 | 버전 | 날짜 | 내용 |
 | --- | --- | --- |
+| v1.2 | 2026-11-23 | 백엔드 검토 반영. ready 재요청 규칙 확정(연장 없음), 습득물 소프트 삭제, `LOST_ITEM_HAS_CLAIM` 코드와 종료된 신고의 close 처리, 신청 생성·습득물 수정·삭제의 행 잠금 규칙, `activeHandoverId` 선택 규칙 |
 | v1.1 | 2026-11-22 | 프론트 보완 요청 반영. 날짜에 `+09:00` 표기, ID·null 규칙, 인증·세션·CSRF 규칙, `SESSION_EXPIRED`·`HANDOVER_ALREADY_READY` 코드, `/api/auth/me`에 department, 건물 `demoSelectable`, 습득물 `claimEligibility`, 매칭 `reasons`와 최종 정렬, 전달 조회 응답 재정의(`serverNow` 등), 전달 예외 상황표, 관리자 A1\~A4 응답·신청 묶음 조회·전달 상세·동시성 규칙, vite proxy 안내 수정. 보고서: [API 명세서 v1.1 검토 보고서](https://claude.ai/artifact/QuasLA876tjzcnRVmDnVbE) |
 | v1 | 2026-11-22 | 최초 작성 |
 
@@ -82,7 +83,8 @@ Nov 22, 2026 · @하은
 | LOST\_ITEM\_CLOSED | 409 | 종료(CLOSED)된 분실 신고의 수정·삭제 |
 | HANDOVER\_PLACE\_SET | 409 | 장소가 이미 정해진 뒤 다시 이동 가능을 누름 (다시 정하기부터) |
 | SESSION\_EXPIRED | 401 | 요청에 세션 쿠키는 있는데 서버 세션이 만료됨. 쿠키 자체가 없으면 LOGIN\_REQUIRED |
-| HANDOVER\_ALREADY\_READY | 409 | 이동 가능이 아직 유효한데 다시 누름 (협의 필요, 보고서 ④-1) |
+| HANDOVER\_ALREADY\_READY | 409 | 이동 가능이 아직 유효한데 다시 누름. 연장은 없고 만료된 뒤에만 다시 누를 수 있음 (보고서 ④-1 B로 확정) |
+| LOST\_ITEM\_HAS\_CLAIM | 409 | 연결된 진행 중(PENDING·APPROVED) 수령 신청이 있는 분실 신고의 삭제 |
 
 ## 상태값과 코드
 
@@ -228,7 +230,7 @@ Nov 22, 2026 · @하은
 
 **수령 신청 버튼 규칙 (프론트):** 로그인 상태이고, `isMine`이 false이고, `myClaimStatus`가 null이고, `status`가 STORED 또는 CLAIM\_REQUESTED일 때만 누를 수 있다. 나머지는 버튼을 끄고 상태 문구를 보여준다. 검색 결과에는 수령대기(AWAITING\_PICKUP) 물건도 나오지만 신청은 못 한다.
 
-**수정·삭제:** 수정 필드는 등록과 같고 `image`만 선택이다. STORED가 아니면 `ITEM_LOCKED`. 삭제하면 이미지 파일도 지운다.
+**수정·삭제:** 수정 필드는 등록과 같고 `image`만 선택이다. STORED가 아니면 `ITEM_LOCKED`. 삭제는 소프트 삭제다: 행은 남기고 `deleted_at`에 시각을 기록하며(거절·취소된 신청이 FK로 남아 있을 수 있음), 이미지 파일만 지운다. 삭제된 습득물은 모든 목록·검색·매칭·관리자 화면에서 빠지고, 상세 조회는 404다.
 
 ## 분실 신고와 자동 매칭
 
@@ -239,7 +241,7 @@ Nov 22, 2026 · @하은
 | POST | /api/lost-items | 등록. 응답에 매칭 Top 3 포함 | 학생 |
 | GET | /api/lost-items/{id} | 상세 | 본인 |
 | PUT | /api/lost-items/{id} | 수정 | 본인, OPEN일 때만 |
-| DELETE | /api/lost-items/{id} | 삭제 | 본인, OPEN이고 연결된 진행 중 신청이 없을 때 |
+| DELETE | /api/lost-items/{id} | 삭제 | 본인, OPEN이고 연결된 진행 중 신청이 없을 때 (있으면 `LOST_ITEM_HAS_CLAIM`) |
 | GET | /api/lost-items/{id}/matches | 후보 다시 조회 (신고 뒤 새로 올라온 습득물 포함) | 본인 |
 | PATCH | /api/lost-items/{id}/close | "찾았음" (서비스 밖에서 찾음) → CLOSED | 본인 |
 
@@ -292,7 +294,7 @@ Nov 22, 2026 · @하은
   "status": "OPEN", "createdAt": "2026-11-20T18:00:00" }
 ```
 
-"찾았음"으로 종료해도 이 신고에 연결된 수령 신청은 자동으로 취소하지 않는다(협의 필요). 필요하면 사용자가 직접 취소한다. 종료된 신고의 수정·삭제는 `LOST_ITEM_CLOSED`.
+"찾았음"으로 종료해도 이 신고에 연결된 수령 신청은 자동으로 취소하지 않는다(협의 필요). 필요하면 사용자가 직접 취소한다. 종료된 신고의 수정·삭제와 다시 "찾았음"을 누르는 요청은 `LOST_ITEM_CLOSED`. 진행 중(PENDING·APPROVED) 신청이 연결된 신고의 삭제는 `LOST_ITEM_HAS_CLAIM`이다. 삭제할 수 있는 경우 거절·취소된 신청에 남은 연결(lost\_item\_id)은 null로 바꾼다.
 
 **매칭 규칙**
 
@@ -336,7 +338,7 @@ Nov 22, 2026 · @하은
   "claimCount": 1, "activeHandoverId": 5 } }
 ```
 
-`activeHandoverId`가 있으면 홈의 "전달 장소 추천" 카드와 "전달 방법 안내"가 전달 진행 패널로 연결된다. 없으면 null.
+`activeHandoverId`는 내가 당사자(습득자 또는 분실자)인 진행 중(DONE 제외) 전달 중 가장 최근에 만들어진 1건이다. 여러 건이면 전체는 `GET /api/me/handovers`로 받는다. `activeHandoverId`가 있으면 홈의 "전달 장소 추천" 카드와 "전달 방법 안내"가 전달 진행 패널로 연결된다. 없으면 null.
 
 **내 수령 신청 목록 항목**
 
@@ -405,7 +407,7 @@ Nov 22, 2026 · @하은
 
 | 전달 상태 | ready | reset | receive |
 | --- | --- | --- | --- |
-| WAITING | 가능. 내 이동 가능이 아직 유효하면 HANDOVER\_ALREADY\_READY (협의 필요) | 가능 (내 이동 가능 해제) | 가능 (추천 없이 만나도 됨) |
+| WAITING | 가능. 내 이동 가능이 아직 유효하면 `HANDOVER_ALREADY_READY` (연장 없음) | 가능 (내 이동 가능 해제) | 가능 (추천 없이 만나도 됨) |
 | PLACE\_SET | `HANDOVER_PLACE_SET` | 가능 → WAITING | 가능 |
 | DONE | `HANDOVER_DONE` | `HANDOVER_DONE` | `HANDOVER_DONE` |
 
@@ -448,7 +450,7 @@ Nov 22, 2026 · @하은
 | `CLAIM_APPROVED` | 신청자 | 관리자가 주인으로 확정 | 에어팟 프로의 주인으로 확정됐어요 |
 | `CLAIM_REJECTED` | 신청자 | 관리자 거절, 또는 다른 사람 확정으로 자동 거절 | 에어팟 프로 수령 신청이 거절됐어요 |
 | `HANDOVER_STARTED` | 습득자 | 주인이 확정되어 전달이 시작됨 | 에어팟 프로 주인이 확정됐어요. 전달을 진행해 주세요 |
-| `HANDOVER_READY` | 상대 당사자 | 상대가 이동 가능을 누름 (30분 연장은 제외) | 상대가 21:10에 이동 가능을 눌렀어요 |
+| `HANDOVER_READY` | 상대 당사자 | 상대가 이동 가능을 누름 | 상대가 21:10에 이동 가능을 눌렀어요 |
 | `HANDOVER_PLACE_SET` | 두 당사자 | 추천 건물이 정해짐 | 인곡관에서 만나세요 |
 | `HANDOVER_DONE` | 습득자 | 분실자가 받았어요를 누름 | 에어팟 프로 전달이 완료됐어요 |
 
@@ -546,7 +548,7 @@ Nov 22, 2026 · @하은
 
 **거절:** 요청 `{ "reason": "증빙이 물품 특징과 다름" }`(선택). 응답 `{ "claimId": 32, "claimStatus": "REJECTED", "itemStatus": "CLAIM_REQUESTED" }`. 마지막 PENDING 신청을 거절하면 `itemStatus`는 STORED. 같은 잠금 순서를 따르고 CLAIM\_REJECTED 알림을 만든다.
 
-**동시성:** 학생의 신청 취소도 같은 습득물 행을 먼저 잠근 뒤 처리한다. 두 관리자가 동시에 확정하거나, 취소와 확정이 겹치면 먼저 잠금을 얻은 쪽이 처리되고 다른 쪽은 409(`OWNER_ALREADY_CONFIRMED` 또는 `CLAIM_NOT_PENDING`)를 받는다. 화면은 409를 받으면 목록을 다시 조회한다.
+**동시성:** 습득물 상태를 바꾸거나 상태를 보고 판단하는 요청은 모두 같은 습득물 행을 `SELECT … FOR UPDATE`로 먼저 잠근 뒤 처리한다. 대상은 수령 신청 생성(STORED→CLAIM\_REQUESTED 전환 포함), 신청 취소, 주인 확정, 거절, 습득물 수정·삭제다. 잠금을 얻은 뒤 상태를 다시 읽어 판단하므로, 확정 직후 들어온 신청은 `CLAIM_CLOSED`, 신청 직후 들어온 수정·삭제는 `ITEM_LOCKED`를 받는다. 두 관리자가 동시에 확정하거나, 취소와 확정이 겹치면 먼저 잠금을 얻은 쪽이 처리되고 다른 쪽은 409(`OWNER_ALREADY_CONFIRMED` 또는 `CLAIM_NOT_PENDING`)를 받는다. 화면은 409를 받으면 목록을 다시 조회한다.
 
 **A4 전달 목록 (`GET /api/admin/handovers`)**
 
