@@ -17,36 +17,52 @@ Spring Security는 쓰지 않는다 (HttpSession + 인터셉터, 비밀번호는
 
 ## 처음 실행하기
 
-1. **MySQL에 DB와 테이블 만들기**
+### 0. 코드 받기
 
-   ```sql
-   CREATE DATABASE lostfound DEFAULT CHARACTER SET utf8mb4;
-   ```
+코드는 지금 `claude/hopeful-goodall-29gmm9` 브랜치에 있다 (`main`에 합치기 전).
 
-   그다음 `db/schema.sql`을 실행한다 (MySQL Workbench에서 파일 열고 실행, 또는 `mysql -u root -p lostfound < db/schema.sql`).
+```bash
+git clone -b claude/hopeful-goodall-29gmm9 https://github.com/benerd03/HS-Lost-Find-Back.git
+```
 
-2. **DB 접속 정보 넣기**
-   `src/main/resources/application-local.yml.example`을 같은 폴더에 `application-local.yml`로 복사하고 비밀번호를 고친다. 이 파일은 깃에 올라가지 않는다.
+이미 받았다면 프로젝트 폴더에서 `git fetch origin` 후 `git checkout claude/hopeful-goodall-29gmm9`.
 
-3. **서버 실행**
+### 1. MySQL Workbench로 테이블 만들기
 
-   ```bash
-   ./gradlew bootRun
-   ```
+1. Workbench 첫 화면 아래 **MySQL Connections**의 `Local instance MySQL80` 상자를 클릭하고, MySQL 설치 때 정한 root 비밀번호를 넣는다.
+2. 쿼리 창이 열리면 `SELECT VERSION();`을 입력하고 **번개 아이콘**(또는 Ctrl+Shift+Enter)으로 실행한다. 8.0.16 이상이어야 한다.
+3. 메뉴 **File → Open SQL Script...** 에서 프로젝트의 `db/schema.sql`을 연다.
+4. 열린 탭에서 **번개 아이콘**(전체 실행)을 누른다. 파일 안에 `CREATE DATABASE lostfound`와 `USE lostfound`가 들어 있어서 DB 만들기까지 한 번에 된다.
+5. 왼쪽 **Navigator → SCHEMAS** 옆 새로고침(↻)을 누르면 `lostfound` 아래 Tables에 12개가 보인다.
 
-   윈도우는 `gradlew.bat bootRun`. IntelliJ에서는 `LostFoundApplication`을 실행한다 (작업 폴더는 프로젝트 루트).
-   `http://localhost:8080/api/categories`가 열리면 성공이다.
+> `schema.sql`을 다시 실행하면 테이블을 지우고 새로 만들기 때문에 넣어 둔 데이터가 모두 사라진다.
 
-4. **처음 켜면 자동으로 들어가는 데이터** (DB가 비어 있을 때만)
+### 2. DB 비밀번호 넣기
 
-   | 종류 | 값 |
-   | --- | --- |
-   | 카테고리 | 전자기기, 지갑·카드, 가방, 의류·잡화, 기타 물품 |
-   | 관리자 | `admin` / `admin1234` (시연 전에 바꿀 것) |
-   | 테스트 학생 | `20210001`, `20210002` / `test1234` |
-   | 건물 | `data/buildings.csv`. 없으면 `data/templates/buildings.csv` 예시 2개 |
+`src/main/resources/application-local.yml.example`을 같은 폴더에 `application-local.yml`로 복사하고, `password:`에 1-1에서 넣은 root 비밀번호를 적는다. 이 파일은 깃에 올라가지 않는다.
 
-   진짜 건물 목록을 넣으려면 `data/buildings.csv`를 만들고, building 테이블을 비운 뒤 다시 켠다.
+### 3. 서버 실행
+
+IntelliJ에서 프로젝트 폴더를 열고(Gradle 프로젝트로 자동 인식), `LostFoundApplication`의 ▶ 버튼을 누른다. 터미널이라면:
+
+```bash
+./gradlew bootRun
+```
+
+윈도우 명령 프롬프트는 `gradlew.bat bootRun`. 브라우저에서 `http://localhost:8080/api/categories`를 열어 JSON이 보이면 성공이다.
+
+### 4. 처음 켜면 자동으로 들어가는 데이터
+
+DB가 비어 있을 때만 넣는다.
+
+| 종류 | 값 |
+| --- | --- |
+| 카테고리 | 전자기기, 지갑·카드, 가방, 의류·잡화, 기타 물품 |
+| 관리자 | `admin` / `admin1234` (시연 전에 바꿀 것) |
+| 테스트 학생 | `20210001`, `20210002` / `test1234` |
+| 건물 | `data/buildings.csv`. 없으면 `data/templates/buildings.csv` 예시 2개 |
+
+진짜 건물 목록을 넣으려면 `data/buildings.csv`를 만들고, building 테이블을 비운 뒤 다시 켠다.
 
 ## 테스트
 

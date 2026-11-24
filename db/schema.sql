@@ -5,6 +5,11 @@
 
 SET NAMES utf8mb4;
 
+-- DB가 없으면 만들고 선택한다. Workbench에서는 이 파일을 열고 번개 아이콘(전체 실행)만 누르면 된다.
+-- 주의: 아래 DROP TABLE 때문에 다시 실행하면 기존 데이터가 모두 지워진다.
+CREATE DATABASE IF NOT EXISTS lostfound DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE lostfound;
+
 DROP TABLE IF EXISTS walk_time;
 DROP TABLE IF EXISTS path_edge;
 DROP TABLE IF EXISTS path_node;
