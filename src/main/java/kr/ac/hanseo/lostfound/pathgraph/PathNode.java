@@ -52,7 +52,8 @@ public class PathNode {
     @Column(nullable = false, precision = 9, scale = 6)
     private BigDecimal lng;
 
-    @Column(name = "elevation_m", nullable = false, precision = 6, scale = 2)
+    /** 선택. 비어 있으면 고도가 있는 노드 3개 이상으로 평면을 맞춰 추정한다 (docs/ERD.md) */
+    @Column(name = "elevation_m", precision = 6, scale = 2)
     private BigDecimal elevationM;
 
     @Column(length = 100)

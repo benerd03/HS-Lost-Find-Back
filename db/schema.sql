@@ -215,7 +215,7 @@ CREATE TABLE path_node (
     building_id   BIGINT        NULL,                    -- ENTRANCE면 필수
     lat           DECIMAL(9,6)  NOT NULL,
     lng           DECIMAL(9,6)  NOT NULL,
-    elevation_m   DECIMAL(6,2)  NOT NULL,                -- 해발 고도(m)
+    elevation_m   DECIMAL(6,2)  NULL,                    -- 해발 고도(m). 선택: 비우면 고도가 있는 노드들로 추정
     memo          VARCHAR(100)  NULL,
     PRIMARY KEY (node_id),
     UNIQUE KEY uk_path_node_code (node_code),

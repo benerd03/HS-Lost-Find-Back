@@ -1,4 +1,4 @@
 node_code,node_type,building_code,lat,lng,elevation_m,memo
 E-INMUN-1,ENTRANCE,INMUN,36.690420,126.583950,42.5,인문사회관 정문 (예시)
-E-INMUN-2,ENTRANCE,INMUN,36.690610,126.584300,45.0,인문사회관 후문 (예시)
-J-01,JUNCTION,,36.690100,126.583700,40.0,인문사회관 앞 삼거리 (예시)
+E-INMUN-2,ENTRANCE,INMUN,36.690610,126.584300,,인문사회관 후문 (예시)
+J-01,JUNCTION,,36.690100,126.583700,,인문사회관 앞 삼거리 (예시)
