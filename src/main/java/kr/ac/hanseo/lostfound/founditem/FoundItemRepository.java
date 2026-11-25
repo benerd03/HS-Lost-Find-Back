@@ -41,4 +41,8 @@ public interface FoundItemRepository extends JpaRepository<FoundItem, Long>, Jpa
             select count(f) from FoundItem f where f.finder.studentId = :studentId and f.deletedAt is null
               and f.status <> kr.ac.hanseo.lostfound.founditem.FoundItemStatus.CLAIMED""")
     long countOngoingMine(@Param("studentId") String studentId);
+
+    /** 여러 습득물을 카테고리·건물과 함께 (관리자 A3 묶음) */
+    @Query("select f from FoundItem f join fetch f.category join fetch f.building where f.id in :ids")
+    List<FoundItem> findAllWithDetailsByIdIn(@Param("ids") java.util.Collection<Long> ids);
 }

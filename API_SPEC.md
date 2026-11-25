@@ -1,4 +1,4 @@
-# 분실·습득물 시스템 API 명세서 v1.4
+# 분실·습득물 시스템 API 명세서 v1.5
 
 Nov 22, 2026 · @하은
 
@@ -8,6 +8,7 @@ Nov 22, 2026 · @하은
 
 | 버전 | 날짜 | 내용 |
 | --- | --- | --- |
+| v1.5 | 2026-11-25 | 관리자 구현하며 빈칸 채움: A2 `claimCount`는 모든 상태의 신청 수, A3 묶음의 `claims`는 그 습득물의 모든 신청(오래된 순), 확정 2단계 판정 기준, 자동 거절 사유, 거절 본문 생략 가능 |
 | v1.4 | 2026-11-25 | 구현하며 빈칸 채움: 신청 취소 응답, `/api/me/summary` 건수 기준(진행 중만), 내 습득 신고 `claimCount`(PENDING 수), `/api/me/**`는 학생 전용(관리자 403) |
 | v1.3 | 2026-11-23 | FR-07 장소 추천을 캠퍼스 보행 그래프(도보 시간) 기반으로 변경. 전달 응답 `building`에 `myWalkSeconds`·`otherWalkSeconds`·`method` 추가, `demoSelectable`·시연 모드 기준을 출입구 노드로 변경, "장소 추천 계산" 절과 관리자 보행 그래프 API 3개 추가. ERD는 `docs/ERD.md`, 데이터 양식은 `docs/DATA_GUIDE.md` |
 | v1.2 | 2026-11-23 | 백엔드 검토 반영. ready 재요청 규칙 확정(연장 없음), 습득물 소프트 삭제, `LOST_ITEM_HAS_CLAIM` 코드와 종료된 신고의 close 처리, 신청 생성·습득물 수정·삭제의 행 잠금 규칙, `activeHandoverId` 선택 규칙 |
@@ -544,11 +545,11 @@ Nov 22, 2026 · @하은
 
 `total`은 네 상태의 합(삭제된 습득물 제외)이다. 건수가 0인 상태도 빼지 않고 0으로 보낸다.
 
-**A2 습득물 목록·상세:** `status`는 생략 시 전체. 목록 항목은 학생용 습득물 목록 항목과 같고 `createdAt`, `claimCount`를 더한다. 상세는 여기에 `description`과 습득자 `finder: { studentId, name }`를 더한다. 응답은 공통 페이지 형식(`items`, `page`, `size`, `totalCount`).
+**A2 습득물 목록·상세:** `status`는 생략 시 전체. 목록 항목은 학생용 습득물 목록 항목과 같고 `createdAt`, `claimCount`(모든 상태의 신청 수. 학생용 내 습득 신고의 claimCount와 다름)를 더한다. 상세는 여기에 `description`과 습득자 `finder: { studentId, name }`를 더한다. 응답은 공통 페이지 형식(`items`, `page`, `size`, `totalCount`).
 
 **A3 신청 묶음 (`GET /api/admin/claims`)**
 
-기본값은 PENDING 신청이 있는 습득물만, 신청이 가장 오래된 습득물부터 보낸다. `claimStatus`를 주면 그 상태의 신청이 있는 묶음을 보낸다. 페이지 없이 배열로 보낸다.
+기본값은 PENDING 신청이 있는 습득물만, 신청이 가장 오래된 습득물부터 보낸다. `claimStatus`를 주면 그 상태의 신청이 있는 묶음을 보낸다. 묶음 안의 `claims`에는 상태와 관계없이 그 습득물의 모든 신청을 오래된 순으로 넣는다(거절·취소 이력도 보이도록). 페이지 없이 배열로 보낸다.
 
 ```json
 { "success": true, "data": [
@@ -582,15 +583,15 @@ Nov 22, 2026 · @하은
 하나의 트랜잭션에서 순서대로 처리하고, 하나라도 실패하면 전부 롤백한다.
 
 1. 습득물 행을 `SELECT … FOR UPDATE`로 잠근다.
-2. 습득물이 CLAIM\_REQUESTED가 아니거나 이미 APPROVED 신청이 있으면 409 `OWNER_ALREADY_CONFIRMED`.
+2. 습득물이 AWAITING\_PICKUP·CLAIMED이거나 이미 APPROVED 신청이 있으면 409 `OWNER_ALREADY_CONFIRMED`. (취소로 STORED가 된 경우는 3에서 `CLAIM_NOT_PENDING`)
 3. 선택한 신청을 다시 읽어 PENDING이 아니면 409 `CLAIM_NOT_PENDING`.
-4. 선택한 신청 APPROVED, 나머지 PENDING 신청 REJECTED (processedAt·처리 관리자 기록).
+4. 선택한 신청 APPROVED, 나머지 PENDING 신청 REJECTED (processedAt·처리 관리자 기록, 자동 거절 사유는 "다른 신청자가 주인으로 확정됨").
 5. 습득물 AWAITING\_PICKUP.
 6. 전달 건 WAITING 생성.
 7. 연결된 분실 신고가 OPEN이면 CLOSED (없으면 `closedLostItemId: null`).
 8. 알림 생성: 확정된 사람 CLAIM\_APPROVED, 거절된 사람들 CLAIM\_REJECTED, 습득자 HANDOVER\_STARTED.
 
-**거절:** 요청 `{ "reason": "증빙이 물품 특징과 다름" }`(선택). 응답 `{ "claimId": 32, "claimStatus": "REJECTED", "itemStatus": "CLAIM_REQUESTED" }`. 마지막 PENDING 신청을 거절하면 `itemStatus`는 STORED. 같은 잠금 순서를 따르고 CLAIM\_REJECTED 알림을 만든다.
+**거절:** 요청 `{ "reason": "증빙이 물품 특징과 다름" }`(선택, 255자 이내, 본문 자체를 생략해도 됨). 사유는 DB에 남지만 학생 응답에는 보내지 않는다. 응답 `{ "claimId": 32, "claimStatus": "REJECTED", "itemStatus": "CLAIM_REQUESTED" }`. 마지막 PENDING 신청을 거절하면 `itemStatus`는 STORED. 같은 잠금 순서를 따르고 CLAIM\_REJECTED 알림을 만든다.
 
 **동시성:** 습득물 상태를 바꾸거나 상태를 보고 판단하는 요청은 모두 같은 습득물 행을 `SELECT … FOR UPDATE`로 먼저 잠근 뒤 처리한다. 대상은 수령 신청 생성(STORED→CLAIM\_REQUESTED 전환 포함), 신청 취소, 주인 확정, 거절, 습득물 수정·삭제다. 잠금을 얻은 뒤 상태를 다시 읽어 판단하므로, 확정 직후 들어온 신청은 `CLAIM_CLOSED`, 신청 직후 들어온 수정·삭제는 `ITEM_LOCKED`를 받는다. 두 관리자가 동시에 확정하거나, 취소와 확정이 겹치면 먼저 잠금을 얻은 쪽이 처리되고 다른 쪽은 409(`OWNER_ALREADY_CONFIRMED` 또는 `CLAIM_NOT_PENDING`)를 받는다. 화면은 409를 받으면 목록을 다시 조회한다.
 
