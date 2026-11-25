@@ -1,0 +1,18 @@
+building_code,name,lat,lng,sort_order,memo
+H01,이학관,,,1,Science Building
+H02,영암관,,,2,Youngam Gwan
+H03,보건의료학관,,,3,Health Science Building
+H04,청곡관(학생회관),,,4,Chunggok Gwan
+H05,건축토목공학관,,,5,Architectural and Civil Engineering Building
+H06,인곡2관(제2학사관),,,6,Ingok Gwan 2 (Students Residential Hall)
+H07,연암도서관,,,7,Younahm Library
+H08,인곡관(제1학사관),,,8,Ingok Gwan (Students Residential Hall)
+H09,학군단(ROTC),,,9,Reserve Officers Training Corps
+H10,공학관,,,10,Engineering Building
+H11,인문사회관,,,11,Humanities and Social Sciences Building
+H12,심운관,,,12,Shimun Gwan (Industrial Cooperative Research Center)
+H13,산학협력관,,,13,Industry-Academia Cooperation Foundation
+H14,예술관,,,14,Fine Art Building
+H15,영암체육관,,,15,Youngam Gymnasium
+H16,자악관,,,16,Jaak Gwan (Administration Building)
+ETC,기타,,,99,건물이 아닌 곳

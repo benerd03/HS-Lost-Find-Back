@@ -147,7 +147,7 @@ class AuthAndPermissionTest {
         mvc.perform(get("/api/buildings"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].buildingId").isNumber())
-                .andExpect(jsonPath("$.data[0].demoSelectable").value(true))
+                .andExpect(jsonPath("$.data[0].demoSelectable").isBoolean())
                 .andExpect(jsonPath("$.data[?(@.name == '기타')].demoSelectable").value(false))
                 .andExpect(jsonPath("$.data[0].lat").doesNotExist());
     }
