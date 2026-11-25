@@ -34,7 +34,9 @@ import lombok.extern.slf4j.Slf4j;
  * - 카테고리 5개 (11/22 확정)
  * - 관리자 계정 (회원가입 없음)
  * - 테스트 학생 2명
- * - 건물: data/buildings.csv (없으면 data/templates/buildings.csv 예시)
+ * - 건물: data/buildings.csv를 켤 때마다 코드(building_code) 기준으로 맞춘다. 새 코드는 추가, 있는 코드는 이름·좌표·순서 갱신.
+ *   (CSV에서 줄을 지워도 DB 건물은 지우지 않는다. 습득물·분실 신고가 참조하고 있을 수 있으므로)
+ *   data/buildings.csv가 없고 DB도 비어 있으면 data/templates/buildings.csv 예시를 넣는다
  * 보행 그래프(노드·간선)는 pathgraph 기능에서 따로 읽는다.
  */
 @Slf4j
@@ -76,37 +78,46 @@ public class SeedDataRunner implements ApplicationRunner {
             studentRepository.save(new Student("20210002", hash, "테스트학생B", "컴퓨터공학과", "010-1111-0002"));
             log.info("[seed] 테스트 학생 20210001, 20210002");
         }
-        if (buildingRepository.count() == 0) {
-            seedBuildings();
-        }
+        syncBuildings();
     }
 
-    private void seedBuildings() throws IOException {
+    private void syncBuildings() throws IOException {
         Path real = Path.of(properties.dataDir(), "buildings.csv");
-        Path file = Files.exists(real) ? real : Path.of(properties.dataDir(), "templates", "buildings.csv");
-        if (!Files.exists(file)) {
-            log.warn("[seed] 건물 CSV가 없습니다: {}", real.toAbsolutePath());
-            return;
-        }
-        if (file != real) {
+        Path file = real;
+        if (!Files.exists(real)) {
+            if (buildingRepository.count() > 0) {
+                return;
+            }
+            file = Path.of(properties.dataDir(), "templates", "buildings.csv");
+            if (!Files.exists(file)) {
+                log.warn("[seed] 건물 CSV가 없습니다: {}", real.toAbsolutePath());
+                return;
+            }
             log.warn("[seed] data/buildings.csv가 없어 예시 파일({})로 건물을 넣습니다", file);
         }
         CSVFormat format = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).get();
-        int count = 0;
+        int added = 0;
+        int updated = 0;
         // 엑셀에서 저장한 CSV의 BOM 제거
         String text = Files.readString(file, StandardCharsets.UTF_8).replace("\uFEFF", "");
         try (Reader reader = new StringReader(text)) {
             for (CSVRecord row : format.parse(reader)) {
-                buildingRepository.save(new Building(
-                        row.get("building_code"),
-                        row.get("name"),
-                        decimalOrNull(row.get("lat")),
-                        decimalOrNull(row.get("lng")),
-                        Integer.parseInt(row.get("sort_order"))));
-                count++;
+                String code = row.get("building_code");
+                String name = row.get("name");
+                BigDecimal lat = decimalOrNull(row.get("lat"));
+                BigDecimal lng = decimalOrNull(row.get("lng"));
+                int sortOrder = Integer.parseInt(row.get("sort_order"));
+                var existing = buildingRepository.findByCode(code);
+                if (existing.isPresent()) {
+                    existing.get().update(name, lat, lng, sortOrder);
+                    updated++;
+                } else {
+                    buildingRepository.save(new Building(code, name, lat, lng, sortOrder));
+                    added++;
+                }
             }
         }
-        log.info("[seed] 건물 {}개 ({})", count, file);
+        log.info("[seed] 건물 추가 {}개, 갱신 {}개 ({})", added, updated, file);
     }
 
     private static BigDecimal decimalOrNull(String value) {

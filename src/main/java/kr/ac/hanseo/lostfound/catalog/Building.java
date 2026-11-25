@@ -47,6 +47,14 @@ public class Building {
         this.sortOrder = sortOrder;
     }
 
+    /** data/buildings.csv 내용으로 갱신 (코드가 같은 건물) */
+    public void update(String name, BigDecimal lat, BigDecimal lng, int sortOrder) {
+        this.name = name;
+        this.lat = lat;
+        this.lng = lng;
+        this.sortOrder = sortOrder;
+    }
+
     public boolean hasCoordinate() {
         return lat != null && lng != null;
     }

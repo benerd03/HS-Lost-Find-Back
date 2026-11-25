@@ -1,4 +1,4 @@
-# 분실·습득물 시스템 API 명세서 v1.5
+# 분실·습득물 시스템 API 명세서 v1.6
 
 Nov 22, 2026 · @하은
 
@@ -8,6 +8,7 @@ Nov 22, 2026 · @하은
 
 | 버전 | 날짜 | 내용 |
 | --- | --- | --- |
+| v1.6 | 2026-11-25 | 전달 구현하며 빈칸 채움: 보행 그래프 전까지는 직선거리(`method: STRAIGHT_LINE`, 도보 시간 null), 받았어요 판정 순서(습득자 `FORBIDDEN` 먼저), A4에 이동 가능 시각 표시(보고서 ④-4 A로 확정), `GET /api/handovers/{id}`도 학생 전용 |
 | v1.5 | 2026-11-25 | 관리자 구현하며 빈칸 채움: A2 `claimCount`는 모든 상태의 신청 수, A3 묶음의 `claims`는 그 습득물의 모든 신청(오래된 순), 확정 2단계 판정 기준, 자동 거절 사유, 거절 본문 생략 가능 |
 | v1.4 | 2026-11-25 | 구현하며 빈칸 채움: 신청 취소 응답, `/api/me/summary` 건수 기준(진행 중만), 내 습득 신고 `claimCount`(PENDING 수), `/api/me/**`는 학생 전용(관리자 403) |
 | v1.3 | 2026-11-23 | FR-07 장소 추천을 캠퍼스 보행 그래프(도보 시간) 기반으로 변경. 전달 응답 `building`에 `myWalkSeconds`·`otherWalkSeconds`·`method` 추가, `demoSelectable`·시연 모드 기준을 출입구 노드로 변경, "장소 추천 계산" 절과 관리자 보행 그래프 API 3개 추가. ERD는 `docs/ERD.md`, 데이터 양식은 `docs/DATA_GUIDE.md` |
@@ -408,7 +409,7 @@ Nov 22, 2026 · @하은
 
 응답은 상태 조회와 같은 모양이다. 두 번째 사람이 누른 경우 서버가 건물을 계산해 `status: "PLACE_SET"`과 `building`을 바로 돌려주고, 임시 좌표는 지운다.
 
-**받았어요:** 응답은 조회 응답과 같은 모양이며 `status: "DONE"`이다. 같은 트랜잭션에서 수령 신청 COMPLETED, 습득물 CLAIMED로 바꾸고 습득자에게 HANDOVER\_DONE 알림을 만든다. 예외는 `HANDOVER_NOT_PARTY`, `HANDOVER_DONE`, `FORBIDDEN`(습득자가 호출).
+**받았어요:** 응답은 조회 응답과 같은 모양이며 `status: "DONE"`이다. 같은 트랜잭션에서 수령 신청 COMPLETED, 습득물 CLAIMED로 바꾸고 습득자에게 HANDOVER\_DONE 알림을 만든다. 예외 판정 순서: 없음 404 → 당사자 아님 `HANDOVER_NOT_PARTY` → 습득자가 호출 `FORBIDDEN` → 이미 완료 `HANDOVER_DONE`.
 
 **장소 추천 계산 (FR-07, 11/23 C안)**
 
@@ -612,7 +613,7 @@ Nov 22, 2026 · @하은
       "placeSetAt": "2026-11-22T20:46:00+09:00", "completedAt": null } ] } }
 ```
 
-`summary.ongoing`은 WAITING+PLACE\_SET, `placeSet`은 그중 PLACE\_SET, `done`은 DONE 건수다(날짜 필터 적용). 상세 API는 목록 항목과 같은 모양 하나를 보낸다. 관리자에게 좌표는 보내지 않고, 이동 가능 시각(readyUntil)을 보여줄지는 협의 필요다.
+`summary.ongoing`은 WAITING+PLACE\_SET, `placeSet`은 그중 PLACE\_SET, `done`은 DONE 건수다(날짜 필터 적용). 상세 API는 목록 항목과 같은 모양 하나를 보낸다. 관리자에게 좌표는 보내지 않고, 이동 가능 시각(readyUntil)은 보낸다 (보고서 ④-4 기본안 A).
 
 ## 기획 확정안과 화면 시안 비교 (협의용)
 

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import kr.ac.hanseo.lostfound.common.api.ApiResponse;
-import kr.ac.hanseo.lostfound.pathgraph.PathNodeRepository;
+import kr.ac.hanseo.lostfound.pathgraph.PlaceRecommendationService;
 import lombok.RequiredArgsConstructor;
 
 /** 카테고리·건물 목록 (로그인 없이 조회 가능) */
@@ -21,7 +21,7 @@ public class CatalogController {
 
     private final CategoryRepository categoryRepository;
     private final BuildingRepository buildingRepository;
-    private final PathNodeRepository pathNodeRepository;
+    private final PlaceRecommendationService placeRecommendationService;
 
     public record CategoryResponse(Long categoryId, String name) {
     }
@@ -37,17 +37,12 @@ public class CatalogController {
                 .toList());
     }
 
-    /**
-     * demoSelectable: 보행 그래프 모드면 출입구 노드가 있는 건물,
-     * 그래프 데이터가 아직 없으면(직선거리 대체 모드) 좌표가 있는 건물
-     */
+    /** demoSelectable: 장소 추천 후보가 될 수 있는 건물 (시연 모드의 현재 위치로 고를 수 있음) */
     @GetMapping("/buildings")
     public ApiResponse<List<BuildingResponse>> buildings() {
-        Set<Long> withEntrance = pathNodeRepository.findBuildingIdsWithEntrance();
-        boolean graphMode = !withEntrance.isEmpty();
+        Set<Long> selectable = placeRecommendationService.selectableBuildingIds();
         return ApiResponse.ok(buildingRepository.findAllByOrderBySortOrderAscIdAsc().stream()
-                .map(b -> new BuildingResponse(b.getId(), b.getName(),
-                        graphMode ? withEntrance.contains(b.getId()) : b.hasCoordinate()))
+                .map(b -> new BuildingResponse(b.getId(), b.getName(), selectable.contains(b.getId())))
                 .toList());
     }
 }

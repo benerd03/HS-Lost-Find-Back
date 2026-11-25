@@ -2,6 +2,8 @@
 
 FR-07 장소 추천에 쓰는 서산캠퍼스 데이터를 모으는 방법이다.
 
+> **지금 상태 (11/25):** `data/buildings.csv`의 좌표는 학교 항공사진의 건물 배치로 만든 **임시값**이다. 건물끼리의 상대 위치는 비슷하지만 실제 GPS와는 맞지 않으므로, 휴대폰 GPS로 "이동 가능"을 누르면 엉뚱한 건물이 나올 수 있다. 시연 모드(건물 선택)는 지금도 동작한다. 실측 좌표로 `lat`, `lng` 칸만 바꾸고 서버를 다시 켜면 DB도 바뀐다.
+
 ## 한눈에 보기
 
 1. 엑셀 양식 [`data/templates/campus_graph_template.xlsx`](../data/templates/campus_graph_template.xlsx)를 받는다. 탭 4개: 사용법, buildings, path\_nodes, path\_edges

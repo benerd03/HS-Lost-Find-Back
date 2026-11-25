@@ -136,6 +136,19 @@ public class Handover {
         clearAllCoordinates();
     }
 
+    /** WAITING에서 다시 정하기: 내 이동 가능만 해제 */
+    public void clearFinderReady() {
+        this.finderReadyUntil = null;
+        this.finderLat = null;
+        this.finderLng = null;
+    }
+
+    public void clearOwnerReady() {
+        this.ownerReadyUntil = null;
+        this.ownerLat = null;
+        this.ownerLng = null;
+    }
+
     /** 다시 정하기: 두 사람 상태와 추천 건물 초기화 */
     public void reset() {
         this.status = HandoverStatus.WAITING;
