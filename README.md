@@ -12,7 +12,7 @@
 
 ## 기술 스택
 
-Java 17 이상 · Spring Boot 3.5 · Spring Data JPA · MySQL 8.0.16 이상 · Gradle · Lombok
+Java 17~25 (21 또는 25 권장) · Spring Boot 3.5 · Spring Data JPA · MySQL 8.0.16 이상 · Gradle · Lombok
 Spring Security는 쓰지 않는다 (HttpSession + 인터셉터, 비밀번호는 BCrypt만 사용).
 
 ## 처음 실행하기
@@ -43,7 +43,9 @@ git clone -b claude/hopeful-goodall-29gmm9 https://github.com/benerd03/HS-Lost-F
 
 ### 3. 서버 실행
 
-IntelliJ에서 프로젝트 폴더를 열고(Gradle 프로젝트로 자동 인식), `LostFoundApplication`의 ▶ 버튼을 누른다. 터미널이라면:
+IntelliJ에서 프로젝트 폴더를 열고(Gradle 프로젝트로 자동 인식), `LostFoundApplication`의 ▶ 버튼을 누른다.
+
+JDK는 21 또는 25를 쓴다 (26 이상은 Gradle이 아직 지원하지 않을 수 있다). IntelliJ **파일 → 프로젝트 구조 → SDK**와 **설정 → 빌드 도구 → Gradle → Gradle JVM** 두 곳을 같은 JDK로 맞춘다. 터미널이라면:
 
 ```bash
 ./gradlew bootRun
