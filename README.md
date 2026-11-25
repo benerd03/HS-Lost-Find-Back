@@ -8,6 +8,7 @@
 | [docs/ERD.md](docs/ERD.md) | ERD, 테이블 설명, 장소 추천 계산 방식 |
 | [db/schema.sql](db/schema.sql) | MySQL DDL (12개 테이블) |
 | [docs/DATA_GUIDE.md](docs/DATA_GUIDE.md) | 건물·보행 그래프 데이터 수집 방법 |
+| [docs/SETUP_CHECK.md](docs/SETUP_CHECK.md) | 실행이 안 될 때 터미널로 JDK·Gradle·라이브러리·DB 점검 |
 | 기획 확정안 PDF | 요구사항(FR-01~07), 최종 시연 성공 조건 |
 
 ## 기술 스택
