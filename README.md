@@ -20,13 +20,11 @@ Spring Security는 쓰지 않는다 (HttpSession + 인터셉터, 비밀번호는
 
 ### 0. 코드 받기
 
-코드는 지금 `claude/hopeful-goodall-29gmm9` 브랜치에 있다 (`main`에 합치기 전).
-
 ```bash
-git clone -b claude/hopeful-goodall-29gmm9 https://github.com/benerd03/HS-Lost-Find-Back.git
+git clone https://github.com/benerd03/HS-Lost-Find-Back.git
 ```
 
-이미 받았다면 프로젝트 폴더에서 `git fetch origin` 후 `git checkout claude/hopeful-goodall-29gmm9`.
+이미 받았다면 `main` 브랜치에서 `git pull` (IntelliJ: Git → 풀).
 
 ### 1. MySQL Workbench로 테이블 만들기
 
@@ -73,7 +71,7 @@ DB가 비어 있을 때만 넣는다.
 ./gradlew test
 ```
 
-MySQL 없이 H2 메모리 DB로 돈다. 현재 123개: 회원가입·로그인·로그아웃, 세션 만료 구분, 관리자 API 403, 카테고리·건물 조회, 날짜 형식, 이미지 검증, 습득물(28개), 분실 신고·매칭(19개), 수령 신청·마이페이지(14개), 관리자 확정·거절·조회(10개, 동시 확정 포함), 전달 진행·A4(16개, 30분 만료 포함), 장소 추천 규칙(7개), 알림(6개).
+MySQL 없이 H2 메모리 DB로 돈다. 현재 140개: 회원가입·로그인·로그아웃, 세션 만료 구분, 관리자 API 403, 카테고리·건물 조회, 날짜 형식, 이미지 검증, 습득물(28개), 분실 신고·매칭(19개), 수령 신청·마이페이지(14개), 관리자 확정·거절·조회(10개, 동시 확정 포함), 전달 진행·A4(16개, 30분 만료 포함), 장소 추천 규칙(7개), 알림(6개), 보행 그래프(17개, 언덕 지형 예제 포함).
 
 ## 폴더 구조
 
@@ -97,7 +95,7 @@ src/main/java/kr/ac/hanseo/lostfound/
 ├── mypage/            마이페이지, 내 진행 현황                ✅ 구현
 ├── handover/          전달 진행 (FR-07)                       ✅ 구현
 ├── notification/      알림                                    ✅ 구현
-└── pathgraph/         보행 그래프, 장소 추천                  직선거리 추천 ✅, 보행 그래프는 아직
+└── pathgraph/         보행 그래프, 장소 추천                  ✅ 구현 (데이터 없으면 직선거리로 대체)
 ```
 
 ## 남은 작업 (권장 순서)
@@ -111,7 +109,7 @@ API 명세 ③ "추천 연결 순서"와 같다. 하나 끝날 때마다 프론�
 - [x] 수령 신청과 마이페이지: 신청, 취소, `/api/me/summary`, `/api/me/found-items`, `/api/me/claims` (신청 시 습득자에게 CLAIM_RECEIVED 알림 저장)
 - [x] 관리자 A2~A3: 습득물 목록·상세, 신청 묶음, 주인 확정(트랜잭션), 거절
 - [x] 전달 진행: 조회, ready(장소 계산), reset, receive, `/api/me/handovers`, 관리자 A4 (장소 추천은 직선거리. 건물 좌표는 임시값)
-- [ ] 보행 그래프: CSV 읽기, Dijkstra로 WALK\_TIME 계산, 관리자 path-graph API 3개
+- [x] 보행 그래프: CSV 읽기·검증, 경사 반영 간선 시간, 고도 추정, Dijkstra로 WALK\_TIME 계산, 관리자 path-graph API 3개 (실제 캠퍼스 데이터는 수집 중)
 - [x] 알림 4개 (목록 최근 30건, 읽지 않은 수, 읽음, 모두 읽음)
 - [ ] 인덱스 적용 전후 EXPLAIN 비교 (발표 자료)
 

@@ -1,4 +1,4 @@
-# 분실·습득물 시스템 API 명세서 v1.7
+# 분실·습득물 시스템 API 명세서 v1.8
 
 Nov 22, 2026 · @하은
 
@@ -8,6 +8,7 @@ Nov 22, 2026 · @하은
 
 | 버전 | 날짜 | 내용 |
 | --- | --- | --- |
+| v1.8 | 2026-11-25 | 보행 그래프 구현: 그래프 데이터가 있으면 `method: WALK_GRAPH`와 도보 시간, 없으면 `STRAIGHT_LINE`. `unreachableNodes`는 출입구가 있는 건물 중 하나라도 닿지 못하는 노드. CSV 오류 메시지는 `파일명 N행: 이유` |
 | v1.7 | 2026-11-25 | 알림 구현하며 빈칸 채움: 읽지 않은 수 `{ unreadCount }`, 읽음 처리 응답은 목록 항목 1개, 모두 읽음 `{ updatedCount }`, 이동할 곳이 없으면 `link: null`, 알림은 학생 전용 |
 | v1.6 | 2026-11-25 | 전달 구현하며 빈칸 채움: 보행 그래프 전까지는 직선거리(`method: STRAIGHT_LINE`, 도보 시간 null), 받았어요 판정 순서(습득자 `FORBIDDEN` 먼저), A4에 이동 가능 시각 표시(보고서 ④-4 A로 확정), `GET /api/handovers/{id}`도 학생 전용 |
 | v1.5 | 2026-11-25 | 관리자 구현하며 빈칸 채움: A2 `claimCount`는 모든 상태의 신청 수, A3 묶음의 `claims`는 그 습득물의 모든 신청(오래된 순), 확정 2단계 판정 기준, 자동 거절 사유, 거절 본문 생략 가능 |
@@ -536,7 +537,7 @@ Nov 22, 2026 · @하은
   "unreachableNodes": ["J-31"], "buildingsWithoutEntrance": ["기타"] } }
 ```
 
-`rebuild`는 같은 모양으로 응답한다. CSV에 오류가 있으면(없는 node\_code 참조, 중복 코드, 좌표 형식 오류) 400 `VALIDATION_FAILED`이고 `message`에 파일명과 행 번호를 넣으며, 기존 그래프는 그대로 둔다. 진행 중인 전달의 추천 결과는 바뀌지 않는다.
+`unreachableNodes`는 출입구가 있는 건물 중 하나라도 닿지 못하는 노드(길이 끊긴 곳 찾기용), `candidateBuildingCount`는 한 노드에서라도 닿는 건물 수다. `rebuild`는 같은 모양으로 응답한다. CSV에 오류가 있으면(없는 node\_code 참조, 중복 코드, 좌표 형식 오류) 400 `VALIDATION_FAILED`이고 `message`에 파일명과 행 번호를 넣으며, 기존 그래프는 그대로 둔다. 진행 중인 전달의 추천 결과는 바뀌지 않는다.
 
 `GET /api/admin/path-graph/route?fromNode=E-DORM1-1&toBuilding=INMUN` 응답: `{ "seconds": 312, "nodes": ["E-DORM1-1", "J-04", "J-07", "E-INMUN-1"] }`. 코드가 없으면 404.
 

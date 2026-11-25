@@ -1,0 +1,5 @@
+from_node_code,to_node_code,edge_type,distance_m,forward_seconds,backward_seconds,memo
+E-BS-1,E-BL-1,PATH,,,,오르막 10%
+E-BL-1,E-BM-1,PATH,,,,
+E-BM-1,E-BN-1,PATH,,,,
+E-BM-1,J-01,PATH,,,,

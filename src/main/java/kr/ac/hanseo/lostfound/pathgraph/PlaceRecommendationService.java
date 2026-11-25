@@ -9,10 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 장소 추천 창구. 보행 그래프(WALK_TIME) 방식이 준비되면 그것을 쓰고, 아니면 직선거리로 대체한다.
- * 지금은 보행 그래프 계산이 아직 구현되지 않아 항상 직선거리다.
- * 보행 그래프를 붙일 때: PlaceRecommender를 구현한 WalkGraphPlaceRecommender를 만들고
- * 아래 graph() 자리에 넣는다. 데이터가 없으면 recommend()가 empty를 돌려주게 하면 자동으로 대체된다.
+ * 장소 추천 창구. 보행 그래프(WALK_TIME)가 계산돼 있으면 그것을 쓰고, 아니면 직선거리로 대체한다.
+ * 그래프가 있어도 두 사람이 함께 닿는 건물이 없으면(길이 끊긴 경우 등) 직선거리로 대체한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -20,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 public class PlaceRecommendationService {
 
     private final StraightLinePlaceRecommender straightLine;
+    private final WalkGraphPlaceRecommender walkGraph;
+    private final WalkTimeRepository walkTimeRepository;
 
     public Optional<PlaceRecommendation> recommend(GeoPoint finder, GeoPoint owner) {
         return graph().flatMap(g -> g.recommend(finder, owner)).or(() -> straightLine.recommend(finder, owner));
@@ -35,7 +35,8 @@ public class PlaceRecommendationService {
                 .orElseGet(straightLine::candidateBuildingIds);
     }
 
+    /** WALK_TIME이 채워져 있을 때만 보행 그래프 방식 */
     private Optional<PlaceRecommender> graph() {
-        return Optional.empty();
+        return walkTimeRepository.count() > 0 ? Optional.of(walkGraph) : Optional.empty();
     }
 }
