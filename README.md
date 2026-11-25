@@ -1,1 +1,153 @@
 # HS-Lost-Find-Back
+
+한서대학교 분실·습득물 시스템 백엔드 (Spring Boot)
+
+| 문서 | 내용 |
+| --- | --- |
+| [API_SPEC.md](API_SPEC.md) | API 명세 (프론트와의 약속) |
+| [docs/ERD.md](docs/ERD.md) | ERD, 테이블 설명, 장소 추천 계산 방식 |
+| [db/schema.sql](db/schema.sql) | MySQL DDL (12개 테이블) |
+| [docs/DATA_GUIDE.md](docs/DATA_GUIDE.md) | 건물·보행 그래프 데이터 수집 방법 |
+| [docs/SETUP_CHECK.md](docs/SETUP_CHECK.md) | 실행이 안 될 때 터미널로 JDK·Gradle·라이브러리·DB 점검 |
+| 기획 확정안 PDF | 요구사항(FR-01~07), 최종 시연 성공 조건 |
+
+## 기술 스택
+
+Java 17~25 (21 또는 25 권장) · Spring Boot 3.5 · Spring Data JPA · MySQL 8.0.16 이상 · Gradle · Lombok
+Spring Security는 쓰지 않는다 (HttpSession + 인터셉터, 비밀번호는 BCrypt만 사용).
+
+## 처음 실행하기
+
+### 0. 코드 받기
+
+코드는 지금 `claude/hopeful-goodall-29gmm9` 브랜치에 있다 (`main`에 합치기 전).
+
+```bash
+git clone -b claude/hopeful-goodall-29gmm9 https://github.com/benerd03/HS-Lost-Find-Back.git
+```
+
+이미 받았다면 프로젝트 폴더에서 `git fetch origin` 후 `git checkout claude/hopeful-goodall-29gmm9`.
+
+### 1. MySQL Workbench로 테이블 만들기
+
+1. Workbench 첫 화면 아래 **MySQL Connections**의 `Local instance MySQL80` 상자를 클릭하고, MySQL 설치 때 정한 root 비밀번호를 넣는다.
+2. 쿼리 창이 열리면 `SELECT VERSION();`을 입력하고 **번개 아이콘**(또는 Ctrl+Shift+Enter)으로 실행한다. 8.0.16 이상이어야 한다.
+3. 메뉴 **File → Open SQL Script...** 에서 프로젝트의 `db/schema.sql`을 연다.
+4. 열린 탭에서 **번개 아이콘**(전체 실행)을 누른다. 파일 안에 `CREATE DATABASE lostfound`와 `USE lostfound`가 들어 있어서 DB 만들기까지 한 번에 된다.
+5. 왼쪽 **Navigator → SCHEMAS** 옆 새로고침(↻)을 누르면 `lostfound` 아래 Tables에 12개가 보인다.
+
+> `schema.sql`을 다시 실행하면 테이블을 지우고 새로 만들기 때문에 넣어 둔 데이터가 모두 사라진다.
+
+### 2. DB 비밀번호 넣기
+
+`src/main/resources/application-local.yml.example`을 같은 폴더에 `application-local.yml`로 복사하고, `password:`에 1-1에서 넣은 root 비밀번호를 적는다. 이 파일은 깃에 올라가지 않는다.
+
+### 3. 서버 실행
+
+IntelliJ에서 프로젝트 폴더를 열고(Gradle 프로젝트로 자동 인식), `LostFoundApplication`의 ▶ 버튼을 누른다.
+
+JDK는 21 또는 25를 쓴다 (26 이상은 Gradle이 아직 지원하지 않을 수 있다). IntelliJ **파일 → 프로젝트 구조 → SDK**와 **설정 → 빌드 도구 → Gradle → Gradle JVM** 두 곳을 같은 JDK로 맞춘다. 터미널이라면:
+
+```bash
+./gradlew bootRun
+```
+
+윈도우 명령 프롬프트는 `gradlew.bat bootRun`. 브라우저에서 `http://localhost:8080/api/categories`를 열어 JSON이 보이면 성공이다.
+
+### 4. 처음 켜면 자동으로 들어가는 데이터
+
+DB가 비어 있을 때만 넣는다.
+
+| 종류 | 값 |
+| --- | --- |
+| 카테고리 | 전자기기, 지갑·카드, 가방, 의류·잡화, 기타 물품 |
+| 관리자 | `admin` / `admin1234` (시연 전에 바꿀 것) |
+| 테스트 학생 | `20210001`, `20210002` / `test1234` |
+| 건물 | `data/buildings.csv` 17개 (H01~H16 + 기타). **좌표는 항공사진으로 만든 임시값** |
+
+건물은 켤 때마다 `data/buildings.csv`와 맞춘다(같은 코드는 이름·좌표 갱신, 새 코드는 추가). 실측 좌표가 나오면 CSV만 고치고 서버를 다시 켜면 된다.
+
+## 테스트
+
+```bash
+./gradlew test
+```
+
+MySQL 없이 H2 메모리 DB로 돈다. 현재 123개: 회원가입·로그인·로그아웃, 세션 만료 구분, 관리자 API 403, 카테고리·건물 조회, 날짜 형식, 이미지 검증, 습득물(28개), 분실 신고·매칭(19개), 수령 신청·마이페이지(14개), 관리자 확정·거절·조회(10개, 동시 확정 포함), 전달 진행·A4(16개, 30분 만료 포함), 장소 추천 규칙(7개), 알림(6개).
+
+## 폴더 구조
+
+```
+src/main/java/kr/ac/hanseo/lostfound/
+├── common/            공통 (모든 기능이 쓰는 것)
+│   ├── api/           ApiResponse, ErrorResponse, PageResponse, PageParams
+│   ├── error/         ErrorCode(명세의 에러 코드 표), BusinessException, GlobalExceptionHandler
+│   ├── auth/          SessionUser, AuthInterceptor, @LoginUser, @StudentOnly
+│   ├── time/          KstTime(날짜 변환), TimeProvider(현재 시각)
+│   ├── file/          ImageStorage (이미지 검증·저장·삭제)
+│   ├── config/        WebConfig, TimeConfig, PasswordConfig, AppProperties
+│   └── seed/          SeedDataRunner (기본 데이터)
+├── user/              Student, Admin
+├── auth/              회원가입·로그인·로그아웃·내 정보        ✅ 구현
+├── catalog/           카테고리·건물 목록                      ✅ 구현
+├── admin/             관리자 API                              ✅ A1~A4 구현
+├── founditem/         습득물                                  ✅ 구현
+├── lostitem/          분실 신고, 매칭                         ✅ 구현
+├── claim/             수령 신청                               ✅ 구현
+├── mypage/            마이페이지, 내 진행 현황                ✅ 구현
+├── handover/          전달 진행 (FR-07)                       ✅ 구현
+├── notification/      알림                                    ✅ 구현
+└── pathgraph/         보행 그래프, 장소 추천                  직선거리 추천 ✅, 보행 그래프는 아직
+```
+
+## 남은 작업 (권장 순서)
+
+API 명세 ③ "추천 연결 순서"와 같다. 하나 끝날 때마다 프론트에 알려 준다.
+
+- [x] 인증: signup, login, logout, me
+- [x] 공통 목록: categories, buildings
+- [x] 습득물: 등록(multipart), 검색(동적 조건 + 페이지), 상세(`claimEligibility`), 수정, 삭제
+- [x] 분실 신고와 매칭: 등록 + Top 3, 상세, 수정, 삭제, 후보 다시 조회, 찾았음, `/api/me/lost-items`
+- [x] 수령 신청과 마이페이지: 신청, 취소, `/api/me/summary`, `/api/me/found-items`, `/api/me/claims` (신청 시 습득자에게 CLAIM_RECEIVED 알림 저장)
+- [x] 관리자 A2~A3: 습득물 목록·상세, 신청 묶음, 주인 확정(트랜잭션), 거절
+- [x] 전달 진행: 조회, ready(장소 계산), reset, receive, `/api/me/handovers`, 관리자 A4 (장소 추천은 직선거리. 건물 좌표는 임시값)
+- [ ] 보행 그래프: CSV 읽기, Dijkstra로 WALK\_TIME 계산, 관리자 path-graph API 3개
+- [x] 알림 4개 (목록 최근 30건, 읽지 않은 수, 읽음, 모두 읽음)
+- [ ] 인덱스 적용 전후 EXPLAIN 비교 (발표 자료)
+
+## 개발 규칙
+
+AI로 코드를 만들 때도 이 규칙을 같이 알려 준다.
+
+1. **응답은 항상 `ApiResponse.ok(data)`**. 실패는 `throw new BusinessException(ErrorCode.XXX)`만 던지면 `{ success:false, code, message }`로 바뀐다. 새 에러 코드는 명세서에 먼저 추가하고 `ErrorCode`에 넣는다.
+2. **로그인 사용자는 `@LoginUser SessionUser user`** 로 받는다. 로그인 검사는 인터셉터가 이미 했다.
+   - `/api/admin/**`는 관리자만 자동으로 통과한다.
+   - 학생만 쓰는 API(등록, 신청, `/api/me/**`, 전달)는 컨트롤러에 `@StudentOnly`를 붙인다.
+   - 남의 글인지 같은 "본인" 확인은 서비스에서 직접 한다 (`FORBIDDEN`).
+3. **현재 시각은 `TimeProvider.now()`**. `LocalDateTime.now()`를 직접 쓰지 않는다 (테스트에서 30분 뒤를 만들기 위함).
+4. **날짜는 `LocalDateTime`(한국 시간)**. 응답에 `+09:00`이 자동으로 붙고, 요청은 `+09:00`·`Z`·표기 없음 모두 받는다.
+5. **상태를 보고 바꾸는 작업은 먼저 잠근다.** 습득물은 `FoundItemRepository.findByIdForUpdate`, 전달은 `HandoverRepository.findByIdForUpdate`. 잠근 뒤 다시 읽은 상태로 판단한다 (명세 "동시성").
+6. **습득물은 소프트 삭제.** 조회할 때 항상 `deletedAt is null` 조건을 넣는다 (`findActiveById` 참고).
+7. **알림은 상태 변경과 같은 `@Transactional` 안에서 저장한다.**
+8. **테이블을 바꾸면 세 곳을 같이 고친다:** `db/schema.sql`, 엔티티, `docs/ERD.md`. 서버는 `ddl-auto: validate`라 엔티티와 테이블이 다르면 뜨지 않는다.
+9. 명세에 있는 응답 필드는 값이 없어도 `null`로 보낸다 (필드를 빼지 않는다). DTO는 `record`로 만들면 된다.
+
+## 프론트 연결
+
+프론트의 `vite.config.ts`에 proxy만 추가한다 (명세 "프론트·백엔드 연결 방식").
+
+```ts
+proxy: {
+  '/api': 'http://localhost:8080',
+  '/uploads': 'http://localhost:8080',
+},
+```
+
+## 설정값 (`application.yml`의 `app.*`)
+
+| 키 | 기본값 | 뜻 |
+| --- | --- | --- |
+| `app.upload-dir` | `./uploads` | 이미지 저장 폴더 (깃에 올라가지 않음) |
+| `app.demo-mode` | `true` | 시연 모드: 이동 가능 요청에 GPS 대신 건물 선택 허용 |
+| `app.data-dir` | `./data` | 건물·보행 그래프 CSV 폴더 |
+| `app.seed-enabled` | `true` | 빈 DB에 기본 데이터 넣기 |

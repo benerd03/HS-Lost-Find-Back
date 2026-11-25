@@ -1,0 +1,18 @@
+building_code,name,lat,lng,sort_order,memo
+H01,이학관,36.690973,126.583711,1,"Science Building (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H02,영암관,36.690667,126.581537,2,"Youngam Gwan (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H03,보건의료학관,36.692108,126.583711,3,"Health Science Building (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H04,청곡관(학생회관),36.691532,126.580162,4,"Chunggok Gwan (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H05,건축토목공학관,36.69236,126.579555,5,"Architectural and Civil Engineering Building (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H06,인곡2관(제2학사관),36.693261,126.583772,6,"Ingok Gwan 2 (Students Residential Hall) (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H07,연암도서관,36.694054,126.581102,7,"Younahm Library (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H08,인곡관(제1학사관),36.692414,126.577836,8,"Ingok Gwan (Students Residential Hall) (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H09,학군단(ROTC),36.693387,126.578655,9,"Reserve Officers Training Corps (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H10,공학관,36.693694,126.578089,10,"Engineering Building (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H11,인문사회관,36.694523,126.579403,11,"Humanities and Social Sciences Building (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H12,심운관,36.694054,126.577401,12,"Shimun Gwan (Industrial Cooperative Research Center) (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H13,산학협력관,36.693658,126.576795,13,"Industry-Academia Cooperation Foundation (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H14,예술관,36.695315,126.578696,14,"Fine Art Building (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H15,영암체육관,36.694144,126.576107,15,"Youngam Gymnasium (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+H16,자악관,36.694739,126.575854,16,"Jaak Gwan (Administration Building) (임시 좌표: 항공사진 배치로 만든 가짜 값, 실측으로 교체할 것)"
+ETC,기타,,,99,건물이 아닌 곳

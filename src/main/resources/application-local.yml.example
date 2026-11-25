@@ -1,0 +1,6 @@
+# 이 파일을 application-local.yml로 복사해서 자기 PC의 DB 정보를 넣는다 (깃에 올라가지 않음)
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/lostfound?connectionTimeZone=%2B09:00&forceConnectionTimeZoneToSession=true&characterEncoding=UTF-8
+    username: root
+    password: 내비밀번호
