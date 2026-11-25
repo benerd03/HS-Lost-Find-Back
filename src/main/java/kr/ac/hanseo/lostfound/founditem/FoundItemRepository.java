@@ -28,4 +28,17 @@ public interface FoundItemRepository extends JpaRepository<FoundItem, Long>, Jpa
     /** A1 상태별 건수: [status, count] */
     @Query("select f.status, count(f) from FoundItem f where f.deletedAt is null group by f.status")
     List<Object[]> countByStatus();
+
+    /** 내 습득 신고 (삭제 제외), 최신순 */
+    @Query("""
+            select f from FoundItem f join fetch f.category join fetch f.building
+            where f.finder.studentId = :studentId and f.deletedAt is null
+            order by f.createdAt desc, f.id desc""")
+    List<FoundItem> findMine(@Param("studentId") String studentId);
+
+    /** 내 진행 중 습득 신고 수 (삭제·수령완료 제외) */
+    @Query("""
+            select count(f) from FoundItem f where f.finder.studentId = :studentId and f.deletedAt is null
+              and f.status <> kr.ac.hanseo.lostfound.founditem.FoundItemStatus.CLAIMED""")
+    long countOngoingMine(@Param("studentId") String studentId);
 }

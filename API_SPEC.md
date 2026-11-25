@@ -1,4 +1,4 @@
-# 분실·습득물 시스템 API 명세서 v1.3
+# 분실·습득물 시스템 API 명세서 v1.4
 
 Nov 22, 2026 · @하은
 
@@ -8,6 +8,7 @@ Nov 22, 2026 · @하은
 
 | 버전 | 날짜 | 내용 |
 | --- | --- | --- |
+| v1.4 | 2026-11-25 | 구현하며 빈칸 채움: 신청 취소 응답, `/api/me/summary` 건수 기준(진행 중만), 내 습득 신고 `claimCount`(PENDING 수), `/api/me/**`는 학생 전용(관리자 403) |
 | v1.3 | 2026-11-23 | FR-07 장소 추천을 캠퍼스 보행 그래프(도보 시간) 기반으로 변경. 전달 응답 `building`에 `myWalkSeconds`·`otherWalkSeconds`·`method` 추가, `demoSelectable`·시연 모드 기준을 출입구 노드로 변경, "장소 추천 계산" 절과 관리자 보행 그래프 API 3개 추가. ERD는 `docs/ERD.md`, 데이터 양식은 `docs/DATA_GUIDE.md` |
 | v1.2 | 2026-11-23 | 백엔드 검토 반영. ready 재요청 규칙 확정(연장 없음), 습득물 소프트 삭제, `LOST_ITEM_HAS_CLAIM` 코드와 종료된 신고의 close 처리, 신청 생성·습득물 수정·삭제의 행 잠금 규칙, `activeHandoverId` 선택 규칙 |
 | v1.1 | 2026-11-22 | 프론트 보완 요청 반영. 날짜에 `+09:00` 표기, ID·null 규칙, 인증·세션·CSRF 규칙, `SESSION_EXPIRED`·`HANDOVER_ALREADY_READY` 코드, `/api/auth/me`에 department, 건물 `demoSelectable`, 습득물 `claimEligibility`, 매칭 `reasons`와 최종 정렬, 전달 조회 응답 재정의(`serverNow` 등), 전달 예외 상황표, 관리자 A1\~A4 응답·신청 묶음 조회·전달 상세·동시성 규칙, vite proxy 안내 수정. 보고서: [API 명세서 v1.1 검토 보고서](https://claude.ai/artifact/QuasLA876tjzcnRVmDnVbE) |
@@ -332,6 +333,10 @@ Nov 22, 2026 · @하은
 - 취소나 거절로 그 습득물의 PENDING 신청이 하나도 없으면 습득물은 STORED로 돌아간다.
 - 취소한 신청도 UNIQUE 제약 때문에 같은 물건 재신청이 막힌다 (아래 확인할 것 참고).
 
+**신청 취소 응답:** `{ "claimId": 31, "status": "CANCELLED" }`. 남의 신청은 `FORBIDDEN`, PENDING이 아니면 `CLAIM_NOT_PENDING`, 없으면 404.
+
+`/api/me/**`는 학생 전용이다. 관리자가 호출하면 403 `FORBIDDEN`.
+
 **내 진행 현황 응답**
 
 ```json
@@ -339,7 +344,7 @@ Nov 22, 2026 · @하은
   "claimCount": 1, "activeHandoverId": 5 } }
 ```
 
-`activeHandoverId`는 내가 당사자(습득자 또는 분실자)인 진행 중(DONE 제외) 전달 중 가장 최근에 만들어진 1건이다. 여러 건이면 전체는 `GET /api/me/handovers`로 받는다. `activeHandoverId`가 있으면 홈의 "전달 장소 추천" 카드와 "전달 방법 안내"가 전달 진행 패널로 연결된다. 없으면 null.
+건수는 모두 진행 중인 것만 센다. `lostItemCount`는 OPEN 분실 신고, `foundItemCount`는 수령완료·삭제가 아닌 습득 신고, `claimCount`는 PENDING·APPROVED 신청. `activeHandoverId`는 내가 당사자(습득자 또는 분실자)인 진행 중(DONE 제외) 전달 중 가장 최근에 만들어진 1건이다. 여러 건이면 전체는 `GET /api/me/handovers`로 받는다. `activeHandoverId`가 있으면 홈의 "전달 장소 추천" 카드와 "전달 방법 안내"가 전달 진행 패널로 연결된다. 없으면 null.
 
 **내 수령 신청 목록 항목**
 
@@ -349,7 +354,7 @@ Nov 22, 2026 · @하은
   "handoverId": 5 }
 ```
 
-`handoverId`는 APPROVED 이후에만 값이 있다. 내 분실 신고 목록은 분실 신고 상세와 같은 모양이다. 내 습득 신고 목록은 습득물 목록 항목에 `claimCount`(신청자 수)와 `handoverId`(주인 확정 후에만 값, 습득자가 전달 패널로 가는 입구)를 더한다.
+`handoverId`는 APPROVED 이후에만 값이 있다. 내 분실 신고 목록은 분실 신고 상세와 같은 모양이다. 내 습득 신고 목록은 습득물 목록 항목에 `claimCount`(대기 중인 PENDING 신청 수. 0보다 크면 수정·삭제가 막힘)와 `handoverId`(주인 확정 후에만 값, 습득자가 전달 패널로 가는 입구)를 더한다.
 
 ## 전달 진행 (FR-07)
 

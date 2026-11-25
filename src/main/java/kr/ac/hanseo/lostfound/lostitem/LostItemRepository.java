@@ -26,4 +26,7 @@ public interface LostItemRepository extends JpaRepository<LostItem, Long> {
             where l.student.studentId = :studentId and (:status is null or l.status = :status)
             order by l.createdAt desc, l.id desc""")
     List<LostItem> findMine(@Param("studentId") String studentId, @Param("status") LostItemStatus status);
+
+    @Query("select count(l) from LostItem l where l.student.studentId = :studentId and l.status = :status")
+    long countMine(@Param("studentId") String studentId, @Param("status") LostItemStatus status);
 }

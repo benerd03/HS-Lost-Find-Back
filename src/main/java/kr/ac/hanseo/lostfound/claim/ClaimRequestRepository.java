@@ -29,4 +29,31 @@ public interface ClaimRequestRepository extends JpaRepository<ClaimRequest, Long
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update ClaimRequest c set c.lostItem = null where c.lostItem.id = :lostItemId")
     int unlinkLostItem(@Param("lostItemId") Long lostItemId);
+
+    /** 이 습득물에 남은 신청 중 지정한 상태가 있는지 (취소·거절 후 STORED로 되돌릴지 판단) */
+    @Query("select count(c) > 0 from ClaimRequest c where c.foundItem.id = :foundItemId and c.status = :status")
+    boolean existsByFoundItemAndStatus(@Param("foundItemId") Long foundItemId, @Param("status") ClaimStatus status);
+
+    /** 내 수령 신청 전체, 최신순 (습득물 함께 읽음) */
+    @Query("""
+            select c from ClaimRequest c join fetch c.foundItem
+            where c.student.studentId = :studentId order by c.requestedAt desc, c.id desc""")
+    List<ClaimRequest> findAllMine(@Param("studentId") String studentId);
+
+    /** 습득물별 PENDING 신청 수: [foundItemId, count] */
+    @Query("""
+            select c.foundItem.id, count(c) from ClaimRequest c
+            where c.foundItem.id in :foundItemIds and c.status = kr.ac.hanseo.lostfound.claim.ClaimStatus.PENDING
+            group by c.foundItem.id""")
+    List<Object[]> countPendingByFoundItem(@Param("foundItemIds") Collection<Long> foundItemIds);
+
+    @Query("select count(c) from ClaimRequest c where c.student.studentId = :studentId and c.status in :statuses")
+    long countMine(@Param("studentId") String studentId, @Param("statuses") Collection<ClaimStatus> statuses);
+
+    /**
+     * 신청의 습득물 ID만 읽는다. 엔티티를 미리 읽어 두면 습득물을 잠근 뒤 다시 읽어도
+     * 캐시된 옛 상태가 나오므로, 잠그기 전에는 ID만 가져온다.
+     */
+    @Query("select c.foundItem.id from ClaimRequest c where c.id = :claimId")
+    Optional<Long> findFoundItemIdOf(@Param("claimId") Long claimId);
 }
