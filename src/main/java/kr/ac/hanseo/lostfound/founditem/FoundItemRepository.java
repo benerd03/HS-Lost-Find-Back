@@ -4,16 +4,17 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
-public interface FoundItemRepository extends JpaRepository<FoundItem, Long> {
+public interface FoundItemRepository extends JpaRepository<FoundItem, Long>, JpaSpecificationExecutor<FoundItem> {
 
-    /** 삭제되지 않은 습득물 */
-    @Query("select f from FoundItem f where f.id = :id and f.deletedAt is null")
+    /** 삭제되지 않은 습득물 (카테고리·건물 함께 읽음) */
+    @Query("select f from FoundItem f join fetch f.category join fetch f.building where f.id = :id and f.deletedAt is null")
     Optional<FoundItem> findActiveById(@Param("id") Long id);
 
     /**

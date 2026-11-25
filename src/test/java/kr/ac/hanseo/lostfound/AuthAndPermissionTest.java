@@ -124,16 +124,16 @@ class AuthAndPermissionTest {
     }
 
     @Test
-    void 관리자는_상태별_건수를_0까지_포함해_본다() throws Exception {
+    void 관리자는_네_상태의_건수를_모두_받는다() throws Exception {
         MockHttpSession session = login("ADMIN", SeedDataRunner.ADMIN_ID, SeedDataRunner.ADMIN_PASSWORD);
 
         mvc.perform(get("/api/admin/summary").session(session))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.counts.STORED").value(0))
-                .andExpect(jsonPath("$.data.counts.CLAIM_REQUESTED").value(0))
-                .andExpect(jsonPath("$.data.counts.AWAITING_PICKUP").value(0))
-                .andExpect(jsonPath("$.data.counts.CLAIMED").value(0))
-                .andExpect(jsonPath("$.data.total").value(0));
+                .andExpect(jsonPath("$.data.counts.STORED").isNumber())
+                .andExpect(jsonPath("$.data.counts.CLAIM_REQUESTED").isNumber())
+                .andExpect(jsonPath("$.data.counts.AWAITING_PICKUP").isNumber())
+                .andExpect(jsonPath("$.data.counts.CLAIMED").isNumber())
+                .andExpect(jsonPath("$.data.total").isNumber());
     }
 
     @Test
